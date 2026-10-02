@@ -43,17 +43,23 @@ footer{text-align:center;color:#777;padding:12px;font-size:12px}
 </div>
 </header>
 
+<div id="loginScreen" class="card no-print" style="max-width:900px;margin:80px auto">
+  <h2>Connexion</h2>
+  <p class="muted" style="font-size:20px">Connecte-toi avec le compte créé dans Supabase.</p>
+  <div class="grid">
+    <input id="loginEmail" type="email" placeholder="Email">
+    <input id="loginPass" type="password" placeholder="Mot de passe">
+    <button class="green" onclick="connexion()">Se connecter</button>
+  </div>
+  <div id="loginStatus" class="notice" style="margin-top:12px">Déconnecté.</div>
+</div>
+
+<div id="appArea" style="display:none">
 <main>
 <div class="card no-print">
 <h2>☁️ Synchronisation</h2>
-<div class="grid">
-<input id="emailAuth" type="email" placeholder="Email">
-<input id="passAuth" type="password" placeholder="Mot de passe">
-<button class="green" onclick="connexion()">Se connecter</button>
-<button class="light" onclick="chargerCloud()">Charger les données</button>
-<button class="secondary" onclick="deconnexion()">Déconnexion</button>
-</div>
-<div id="cloudStatus" class="notice" style="margin-top:10px">Hors connexion — les données restent sur cet appareil.</div>
+<div id="cloudStatus" class="notice">Connecté — les données sont synchronisées avec Supabase.</div>
+<button class="secondary" onclick="deconnexion()" style="margin-top:10px">Déconnexion</button>
 </div>
 <div class="card no-print">
 <div class="stats">
@@ -91,6 +97,7 @@ footer{text-align:center;color:#777;padding:12px;font-size:12px}
 </div>
 <footer class="no-print">Les données sont enregistrées sur cet appareil et, après connexion, synchronisées avec Supabase.</footer>
 </main>
+</div>
 
 <div id="modal" class="modal hidden no-print"><div class="modalbox" id="modalContent"></div></div>
 <div id="printArea" class="hidden"></div>
@@ -104,17 +111,41 @@ let clients=JSON.parse(localStorage.getItem(KEY)||"[]");
 let currentUser=null;
 function save(){localStorage.setItem(KEY,JSON.stringify(clients));}
 function cloudMsg(t,err=false){const e=document.getElementById("cloudStatus");if(e){e.textContent=t;e.style.background=err?"#fff2f2":"#eef7ff";}}
+function showLogin(message="Déconnecté."){
+  document.getElementById("loginScreen").style.display="";
+  document.getElementById("appArea").style.display="none";
+  const s=document.getElementById("loginStatus");
+  if(s) s.textContent=message;
+  const e=document.getElementById("loginEmail");
+  const p=document.getElementById("loginPass");
+  if(e) e.value="";
+  if(p) p.value="";
+}
+function showApp(){
+  document.getElementById("loginScreen").style.display="none";
+  document.getElementById("appArea").style.display="";
+}
 async function connexion(){
- const email=document.getElementById("emailAuth").value.trim(),pass=document.getElementById("passAuth").value;
+ const email=document.getElementById("loginEmail").value.trim();
+ const pass=document.getElementById("loginPass").value;
  if(!email||!pass){alert("Entre ton email et ton mot de passe.");return}
- cloudMsg("Connexion en cours…");
+ const s=document.getElementById("loginStatus");
+ if(s) s.textContent="Connexion en cours…";
  const {data,error}=await sb.auth.signInWithPassword({email,password:pass});
- if(error){cloudMsg("Erreur : "+error.message,true);return}
+ if(error){if(s)s.textContent="Erreur : "+error.message;return}
  currentUser=data.user;
- cloudMsg("Connecté : "+currentUser.email);
+ showApp();
+ cloudMsg("Connexion réussie — chargement automatique des données…");
  await chargerCloud(true);
 }
-async function deconnexion(){await sb.auth.signOut();currentUser=null;cloudMsg("Déconnecté — les données locales restent sur cet appareil.");}
+async function deconnexion(){
+  await sb.auth.signOut();
+  currentUser=null;
+  clients=[];
+  save();
+  afficher();
+  showLogin("Déconnecté — reconnecte-toi pour reprendre le contrôle des données.");
+}
 async function chargerCloud(silent=false){
  if(!currentUser){if(!silent)alert("Connecte-toi d'abord.");return}
  if(!silent)cloudMsg("Chargement des données…");
@@ -232,7 +263,20 @@ function exporter(){
 function importer(e){
  let file=e.target.files[0];if(!file)return;let r=new FileReader();r.onload=()=>{try{let d=JSON.parse(r.result);if(!Array.isArray(d.clients))throw 0;if(confirm("Remplacer les données actuelles par cette sauvegarde ?")){clients=d.clients;save();afficher();alert("Importation réussie.");}}catch(_){alert("Fichier de sauvegarde invalide.");}e.target.value=""};r.readAsText(file);
 }
-afficher();
+(async function initAuth(){
+  const {data}=await sb.auth.getSession();
+  if(data && data.session && data.session.user){
+    currentUser=data.session.user;
+    showApp();
+    cloudMsg("Connexion retrouvée — chargement automatique des données…");
+    await chargerCloud(true);
+  }else{
+    clients=[];
+    save();
+    afficher();
+    showLogin();
+  }
+})();
 </script>
 </body>
 </html>

@@ -119,8 +119,8 @@ footer{text-align:center;color:#777;padding:12px;font-size:12px}
 <script>
 const KEY="ma_caisse_vfinal_1";
 const SUPABASE_URL="https://zwknoefaoplxfzogjtvr.supabase.co";
-const SUPABASE_KEY="sb_publishable_3-RWXCKDYVOOpVhIyn56qw_LjWxjT-r";
-const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const SUPABASE_KEY="sb_publishable_7DQE_LSWTNvVubVm8DNg-Q_do4SzrPa";
+const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 let clients=JSON.parse(localStorage.getItem(KEY)||"[]");
 let currentUser=null;
 function save(){localStorage.setItem(KEY,JSON.stringify(clients));}
